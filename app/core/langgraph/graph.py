@@ -14,7 +14,7 @@ from langchain_core.messages import (
     ToolMessage,
     convert_to_openai_messages,
 )
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.langchain import CallbackHandler
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import (
@@ -54,7 +54,7 @@ class LangGraphAgent:
     def __init__(self):
         """Initialize the LangGraph Agent with necessary components."""
         # Use environment-specific LLM model
-        self.llm = ChatOpenAI(
+        self.llm = ChatGoogleGenerativeAI(
             model=settings.LLM_MODEL,
             temperature=settings.DEFAULT_LLM_TEMPERATURE,
             api_key=settings.LLM_API_KEY,
@@ -137,7 +137,9 @@ class LangGraphAgent:
 
         for attempt in range(max_retries):
             try:
-                with llm_inference_duration_seconds.labels(model=self.llm.model_name).time():
+                # Use the correct attribute name for the Google Generative AI chat model
+                current_model_name = getattr(self.llm, "model", settings.LLM_MODEL)
+                with llm_inference_duration_seconds.labels(model=current_model_name).time():
                     generated_state = {"messages": [await self.llm.ainvoke(dump_messages(messages))]}
                 logger.info(
                     "llm_response_generated",
@@ -164,7 +166,14 @@ class LangGraphAgent:
                     logger.warning(
                         "using_fallback_model", model=fallback_model, environment=settings.ENVIRONMENT.value
                     )
-                    self.llm.model_name = fallback_model
+                    # Rebuild LLM with fallback model
+                    self.llm = ChatGoogleGenerativeAI(
+                        model=fallback_model,
+                        temperature=settings.DEFAULT_LLM_TEMPERATURE,
+                        api_key=settings.LLM_API_KEY,
+                        max_tokens=settings.MAX_TOKENS,
+                        **self._get_model_kwargs(),
+                    ).bind_tools(tools)
 
                 continue
 

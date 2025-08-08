@@ -116,19 +116,37 @@ def get_structlog_processors(include_file_info: bool = True) -> List[Any]:
     return processors
 
 
+def _can_write_log_file(file_path: Path) -> bool:
+    """Return True if we can open the file for appending, else False."""
+    try:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, "a", encoding="utf-8"):
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def setup_logging() -> None:
     """Configure structlog with different formatters based on environment.
 
     In development: pretty console output
     In staging/production: structured JSON logs
     """
-    # Create file handler for JSON logs
-    file_handler = JsonlFileHandler(get_log_file_path())
-    file_handler.setLevel(settings.LOG_LEVEL)
-
     # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(settings.LOG_LEVEL)
+
+    # Optionally create file handler for JSON logs if writable
+    handlers = [console_handler]
+    log_file_path = get_log_file_path()
+    if _can_write_log_file(log_file_path):
+        file_handler = JsonlFileHandler(log_file_path)
+        file_handler.setLevel(settings.LOG_LEVEL)
+        handlers.append(file_handler)
+    else:
+        # Fallback: no file handler; we'll log a warning after configuration
+        pass
 
     # Get shared processors
     shared_processors = get_structlog_processors(
@@ -140,7 +158,7 @@ def setup_logging() -> None:
     logging.basicConfig(
         format="%(message)s",
         level=settings.LOG_LEVEL,
-        handlers=[file_handler, console_handler],
+        handlers=handlers,
     )
 
     # Configure structlog based on environment

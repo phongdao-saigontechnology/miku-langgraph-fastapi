@@ -4,7 +4,6 @@ BotFrameworkInput class for Bot Framework input channel implementation.
 
 import datetime
 import logging
-import structlog
 import os
 import re
 from typing import Text, Dict, Any, Optional
@@ -21,7 +20,7 @@ from .input_channel import InputChannel
 from .user_message import UserMessage
 from .bot_framework import BotFramework
 
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 MICROSOFT_OPEN_ID_URI = "https://login.botframework.com/v1/.well-known/openidconfiguration"
 BEARER_REGEX = re.compile(r"Bearer\s+(.*)")
@@ -139,15 +138,6 @@ class BotFrameworkInput(InputChannel):
             metadata_with_attachments = self.add_attachments_to_metadata(postdata, metadata)
 
             try:
-                # Log inbound request summary
-                logger.info(
-                    "botframework_webhook_request",
-                    req_type=postdata.get("type"),
-                    user_id=(postdata.get("from") or {}).get("id"),
-                    conversation_id=(postdata.get("conversation") or {}).get("id"),
-                    service_url=postdata.get("serviceUrl"),
-                    text=(postdata.get("text") or ""),
-                )
                 if postdata["type"] == "message":
                     out_channel = BotFramework(
                         self.app_id,
@@ -165,28 +155,9 @@ class BotFrameworkInput(InputChannel):
                         metadata=metadata_with_attachments,
                     )
 
-                    agent_response = await on_new_message(
-                        sender_id=postdata["from"]["id"], text=user_msg.text
-                    )
-                    # Log outbound response summary
-                    try:
-                        preview = (
-                            agent_response[:500]
-                            if isinstance(agent_response, str)
-                            else str(agent_response)
-                        )
-                    except Exception:
-                        preview = None
-                    logger.info(
-                        "botframework_webhook_response",
-                        user_id=postdata["from"]["id"],
-                        conversation_id=(postdata.get("conversation") or {}).get("id"),
-                        response_preview=preview,
-                    )
+                    await on_new_message(sender_id=postdata["from"]["id"], text=user_msg)
                 else:
                     logger.info("Not received message type")
-
-                await out_channel.send_text_message(postdata["from"]["id"], agent_response)
             except Exception as e:
                 logger.error(f"Exception when trying to handle message.{e}")
                 logger.debug(e, exc_info=True)

@@ -60,8 +60,6 @@ async def chat(
             message_count=len(chat_request.messages),
         )
 
-       
-
         result = await agent.get_response(
             chat_request.messages, session.id, user_id=session.user_id
         )

@@ -64,31 +64,8 @@ def decode_bearer_token(bearer_token: str, jwt_key: str, jwt_algorithm: str) -> 
     return None
 
 
-import re
-
-
-def _sanitize_session_id(raw_id: str) -> str:
-    """Sanitize arbitrary sender IDs into a safe session_id for GraphState.
-
-    - If it's already UUID-like, keep as-is.
-    - Otherwise, keep only [a-zA-Z0-9_-]; replace other chars with '-'.
-    - Collapse multiple '-' and strip leading/trailing '-'.
-    - Fallback to 'default' if empty after sanitization.
-    """
-    if not isinstance(raw_id, str):
-        raw_id = str(raw_id)
-    # Replace disallowed characters
-    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", raw_id)
-    cleaned = re.sub(r"-+", "-", cleaned).strip("-")
-    return cleaned or "default"
-
-
 async def on_new_message(channel_name="", sender_id="", text=""):
     """Handle new messages from channels."""
-    # Accept both raw text and objects with a `.text` attribute
-    if not isinstance(text, str):
-        text = getattr(text, "text", str(text))
-
     message = HumanMessage(content=text, role="user")
     state = {
         "messages": [message],
@@ -97,18 +74,12 @@ async def on_new_message(channel_name="", sender_id="", text=""):
         "reasoning_model": "gemini-2.5-flash",
     }
 
-    session_id = _sanitize_session_id(sender_id)
-    result = await agent.get_response([message], session_id, user_id=sender_id)
+    result = await agent.get_response(
+        [message], sender_id, user_id=sender_id
+    )
 
-    response = None
     if result:
-        last_item = result[-1] if isinstance(result, list) else result
-        if hasattr(last_item, "content"):
-            response = last_item.content
-        elif isinstance(last_item, dict):
-            response = last_item.get("content")
-        else:
-            response = str(last_item)
+        response = result[-1].get("content") if isinstance(result, list) else result[-1].content
     return response
 
 
