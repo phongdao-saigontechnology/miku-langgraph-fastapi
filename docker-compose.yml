@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Single API service with dynamic environment
   app:
@@ -15,19 +13,18 @@ services:
     env_file:
       - .env.${APP_ENV:-development}
     environment:
+      # Only override APP_ENV, let env_file handle the rest
       - APP_ENV=${APP_ENV:-development}
-      # Pass sensitive variables at runtime
-      # - LLM_API_KEY=${LLM_API_KEY:-dummy-key-for-development}
-      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
-      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkeythatshouldbechangedforproduction}
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
-    restart: on-failure
+    restart: always
 
   db:
     image: postgres:15
@@ -38,7 +35,12 @@ services:
       - POSTGRES_PASSWORD=miku
       - POSTGRES_PORT=5432
       - POSTGRES_DB=miku_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miku -d miku_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
 volumes:
-  db-data: 
+  db-data:

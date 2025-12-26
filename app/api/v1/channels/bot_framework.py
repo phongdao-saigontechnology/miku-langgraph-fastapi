@@ -1,5 +1,4 @@
-"""
-BotFramework class for Microsoft Bot Framework communication channel.
+"""BotFramework class for Microsoft Bot Framework communication channel.
 """
 
 import datetime

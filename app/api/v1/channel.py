@@ -1,5 +1,4 @@
-"""
-Legacy channel.py file - now imports from the modular channels package.
+"""Legacy channel.py file - now imports from the modular channels package.
 This file is kept for backward compatibility.
 """
 

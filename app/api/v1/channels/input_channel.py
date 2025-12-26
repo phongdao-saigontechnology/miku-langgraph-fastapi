@@ -1,10 +1,12 @@
-"""
-InputChannel base class for handling input channels.
-"""
+"""InputChannel base class for handling input channels."""
 
-from typing import Text, Dict, Any, Optional, Callable, Awaitable
+from typing import TYPE_CHECKING, Text, Dict, Any, Optional, Callable, Awaitable
 
-from fastapi import Request
+from fastapi import APIRouter, Request
+
+if TYPE_CHECKING:
+    from app.api.v1.channels.user_message import UserMessage
+    from app.api.v1.channels.output_channel import OutputChannel
 
 
 class InputChannel:
@@ -22,7 +24,8 @@ class InputChannel:
         """Defines a FastAPI API router.
 
         The blueprint will be attached to a running server and handle
-        incoming routes it registered for."""
+        incoming routes it registered for.
+        """
         raise NotImplementedError("Component listener needs to provide blueprint.")
 
     def get_output_channel(self) -> Optional["OutputChannel"]:

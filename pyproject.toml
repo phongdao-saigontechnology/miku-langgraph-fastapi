@@ -1,47 +1,69 @@
 [project]
 name = "langgraph-fastapi-template"
-version = "0.1.0"
+version = "0.2.0"
 description = "LangGraph FastAPI Template"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.115.12",
-    "langchain>=0.3.25",
-    "langchain-core>=0.3.58",
-    "langchain-openai>=0.3.16",
-    "langfuse==3.0.3",
-    "langgraph>=0.4.1",
-    "langgraph-checkpoint-postgres>=2.0.19",
-    "passlib[bcrypt]>=1.7.4",
-    "psycopg2-binary>=2.9.10",
-    "pydantic[email]>=2.11.1",
-    "pydantic-settings>=2.8.1",
-    "python-dotenv>=1.1.0",
-    "python-jose[cryptography]>=3.4.0",
-    "python-multipart>=0.0.20",
-    "sqlmodel>=0.0.24",
-    "structlog>=25.2.0",
-    "supabase>=2.15.0",
-    "uvicorn>=0.34.0",
-    "bcrypt>=4.3.0",
-    "slowapi>=0.1.9",
-    "email-validator>=2.2.0",
-    "prometheus-client>=0.19.0",
+    # Core Framework
+    "fastapi>=0.127.0",
+    "uvicorn>=0.40.0",
     "starlette-prometheus>=0.7.0",
-    "asgiref>=3.8.1",
-    "duckduckgo-search>=3.9.0",
-    "langchain-community>=0.3.20",
+    # LangChain & LangGraph (v1.x)
+    "langchain>=1.2.0",
+    "langchain-core>=1.2.5",
+    "langchain-openai>=1.1.6",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.1.2",
+    "langchain-mistralai>=1.1.1",
+    "transformers>=4.48.0",
+    "langgraph>=1.0.5",
+    "langgraph-checkpoint-postgres>=3.0.2",
+    # Observability
+    "langfuse>=3.11.2",
+    "prometheus-client>=0.23.1",
+    "structlog>=25.5.0",
+    # Database
+    "sqlmodel>=0.0.29",
+    "psycopg2-binary>=2.9.11",
+    "supabase>=2.27.0",
+    # Authentication & Security
+    "bcrypt>=5.0.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.5.0",
+    "pyjwt>=2.10.1",
+    # Validation & Settings
+    "pydantic[email]>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "email-validator>=2.3.0",
+    "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.21",
+    # Utilities
+    "slowapi>=0.1.9",
+    "asgiref>=3.11.0",
+    "ddgs>=9.10.0", # Previously duckduckgo-search
     "tqdm>=4.67.1",
     "colorama>=0.4.6",
-    "pyjwt>=2.10.1",
-    "langchain-google-genai>=2.1.4",
+    "langchain-mcp-adapters>=0.2.1",
+    "mcp>=1.25.0",
+    "mistralai>=1.10.0",
 ]
 
 [project.optional-dependencies]
-dev = ["black", "isort", "flake8", "ruff", "djlint==1.36.4"]
+dev = [
+    "black>=25.12.0",
+    "isort>=7.0.0",
+    "flake8>=7.3.0",
+    "ruff>=0.14.10",
+    "djlint>=1.36.4",
+]
 
 [dependency-groups]
-test = ["httpx>=0.28.1", "pytest>=8.3.5"]
+test = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=0.25.0",
+]
 
 
 [tool.pytest.ini_options]

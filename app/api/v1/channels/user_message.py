@@ -1,5 +1,4 @@
-"""
-UserMessage class for representing incoming messages.
+"""UserMessage class for representing incoming messages.
 """
 
 import uuid
@@ -11,7 +10,8 @@ from .output_channel import OutputChannel
 class UserMessage:
     """Represents an incoming message.
 
-    Includes the channel the responses should be sent to."""
+    Includes the channel the responses should be sent to.
+    """
 
     def __init__(
         self,

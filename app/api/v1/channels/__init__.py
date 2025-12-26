@@ -1,5 +1,4 @@
-"""
-Channels package for handling different input and output channels.
+"""Channels package for handling different input and output channels.
 """
 
 from .user_message import UserMessage

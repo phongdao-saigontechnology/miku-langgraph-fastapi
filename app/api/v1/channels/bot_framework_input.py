@@ -1,9 +1,7 @@
-"""
-BotFrameworkInput class for Bot Framework input channel implementation.
+"""BotFrameworkInput class for Bot Framework input channel implementation.
 """
 
 import datetime
-import logging
 import structlog
 import os
 import re
@@ -160,7 +158,7 @@ class BotFrameworkInput(InputChannel):
                     user_msg = UserMessage(
                         text=postdata.get("text", ""),
                         output_channel=out_channel,
-                        sender_id=postdata["from"]["id"],
+                        sender_id=postdata["conversation"]["id"],
                         input_channel=self.name(),
                         metadata=metadata_with_attachments,
                     )
