@@ -1,4 +1,8 @@
-"""This file contains the schemas for the application."""
+"""Schemas for the application.
+
+This module exports all Pydantic schemas used for request/response validation
+and data modeling throughout the application.
+"""
 
 from app.schemas.auth import Token
 from app.schemas.chat import (
@@ -7,13 +11,24 @@ from app.schemas.chat import (
     Message,
     StreamResponse,
 )
-from app.schemas.graph import GraphState
+from app.schemas.graph import (
+    AgentState,
+    GraphState,
+    MCPServerConfig,
+    ToolCallResult,
+)
 
 __all__ = [
+    # Auth schemas
     "Token",
+    # Chat schemas
     "ChatRequest",
     "ChatResponse",
     "Message",
     "StreamResponse",
+    # Graph/State schemas
     "GraphState",
+    "AgentState",
+    "MCPServerConfig",
+    "ToolCallResult",
 ]

@@ -13,8 +13,6 @@ from typing import (
     Any,
     Dict,
     List,
-    Optional,
-    Union,
 )
 
 from dotenv import load_dotenv
@@ -148,11 +146,18 @@ class Settings:
         self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
         # LangGraph Configuration
+        # LLM Provider: "openai", "google", "mistral"
+        self.LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mistral").lower()
         self.LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-        self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self.LLM_MODEL = os.getenv("LLM_MODEL", self._get_default_model())
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
+        
+        # Provider-specific API keys (optional, falls back to LLM_API_KEY)
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", self.LLM_API_KEY)
+        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", self.LLM_API_KEY)
+        self.MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", self.LLM_API_KEY)
 
         # JWT Configuration
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
@@ -198,8 +203,58 @@ class Settings:
         self.EVALUATION_API_KEY = os.getenv("EVALUATION_API_KEY", self.LLM_API_KEY)
         self.EVALUATION_SLEEP_TIME = int(os.getenv("EVALUATION_SLEEP_TIME", "10"))
 
+        # MCP (Model Context Protocol) Configuration
+        self.MCP_ENABLED = os.getenv("MCP_ENABLED", "false").lower() in ("true", "1", "t", "yes")
+        self.MCP_SERVERS = self._parse_mcp_servers()
+        self.MCP_TIMEOUT = int(os.getenv("MCP_TIMEOUT", "30"))
+
         # Apply environment-specific settings
         self.apply_environment_settings()
+
+    def _get_default_model(self) -> str:
+        """Get the default model based on the selected LLM provider.
+
+        Returns:
+            str: Default model name for the configured provider
+        """
+        provider = os.getenv("LLM_PROVIDER", "openai").lower()
+        defaults = {
+            "openai": "gpt-4o-mini",
+            "google": "gemini-1.5-flash",
+            "mistral": "mistral-medium-latest",
+        }
+        return defaults.get(provider, "gpt-4o-mini")
+
+    def _parse_mcp_servers(self) -> List[Dict[str, Any]]:
+        """Parse MCP server configurations from environment.
+
+        Supports JSON format in MCP_SERVERS env var or individual server configs.
+        Example: MCP_SERVERS='[{"name": "filesystem", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]}]'
+
+        Returns:
+            List of MCP server configurations
+        """
+        servers = []
+
+        # Try parsing JSON from MCP_SERVERS
+        mcp_servers_json = os.getenv("MCP_SERVERS", "")
+        if mcp_servers_json:
+            try:
+                servers = json.loads(mcp_servers_json)
+            except json.JSONDecodeError:
+                pass
+
+        # Also check for individual server configs (MCP_SERVER_1, MCP_SERVER_2, etc.)
+        for i in range(1, 10):
+            server_json = os.getenv(f"MCP_SERVER_{i}", "")
+            if server_json:
+                try:
+                    server = json.loads(server_json)
+                    servers.append(server)
+                except json.JSONDecodeError:
+                    pass
+
+        return servers
 
     def apply_environment_settings(self):
         """Apply environment-specific settings based on the current environment."""

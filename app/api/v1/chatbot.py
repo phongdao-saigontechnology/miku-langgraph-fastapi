@@ -2,10 +2,11 @@
 
 This module provides endpoints for chat interactions, including regular chat,
 streaming chat, message history management, and chat history clearing.
+Uses the refactored LangGraph agent with MCP support.
 """
 
 import json
-from typing import List
+from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -14,23 +15,39 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import StreamingResponse
-from app.core.metrics import llm_stream_duration_seconds
+
 from app.api.v1.auth import get_current_session
 from app.core.config import settings
-from app.core.langgraph.graph import LangGraphAgent
+from app.core.langgraph import LangGraphAgent
 from app.core.limiter import limiter
 from app.core.logging import logger
 from app.models.session import Session
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
-    Message,
     StreamResponse,
 )
 
 router = APIRouter()
-agent = LangGraphAgent()
 
+# Global agent instance - initialized on first use
+_agent: Optional[LangGraphAgent] = None
+
+
+async def get_agent() -> LangGraphAgent:
+    """Get or create the global agent instance.
+
+    Returns:
+        LangGraphAgent: The initialized agent
+    """
+    global _agent
+
+    if _agent is None:
+        _agent = LangGraphAgent()
+        await _agent.initialize()
+        logger.info("global_agent_initialized")
+
+    return _agent
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -60,15 +77,24 @@ async def chat(
             message_count=len(chat_request.messages),
         )
 
+        agent = await get_agent()
         result = await agent.get_response(
-            chat_request.messages, session.id, user_id=session.user_id
+            chat_request.messages,
+            session.id,
+            user_id=str(session.user_id),
         )
 
         logger.info("chat_request_processed", session_id=session.id)
 
         return ChatResponse(messages=result)
+
     except Exception as e:
-        logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error(
+            "chat_request_failed",
+            session_id=session.id,
+            error=str(e),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -99,21 +125,23 @@ async def chat_stream(
             message_count=len(chat_request.messages),
         )
 
+        agent = await get_agent()
+
         async def event_generator():
             """Generate streaming events.
 
             Yields:
                 str: Server-sent events in JSON format.
-
-            Raises:
-                Exception: If there's an error during streaming.
             """
             try:
                 full_response = ""
-                with llm_stream_duration_seconds.labels(model=agent.llm.model_name).time():
-                    async for chunk in agent.get_stream_response(
-                        chat_request.messages, session.id, user_id=session.user_id
-                     ):
+
+                async for chunk in agent.get_stream_response(
+                    chat_request.messages,
+                    session.id,
+                    user_id=str(session.user_id),
+                ):
+                    if chunk:
                         full_response += chunk
                         response = StreamResponse(content=chunk, done=False)
                         yield f"data: {json.dumps(response.model_dump())}\n\n"
@@ -122,17 +150,31 @@ async def chat_stream(
                 final_response = StreamResponse(content="", done=True)
                 yield f"data: {json.dumps(final_response.model_dump())}\n\n"
 
+                logger.info(
+                    "stream_chat_completed",
+                    session_id=session.id,
+                    response_length=len(full_response),
+                )
+
             except Exception as e:
                 logger.error(
-                    "stream_chat_request_failed",
+                    "stream_chat_error",
                     session_id=session.id,
                     error=str(e),
                     exc_info=True,
                 )
-                error_response = StreamResponse(content=str(e), done=True)
+                error_response = StreamResponse(content=f"Error: {str(e)}", done=True)
                 yield f"data: {json.dumps(error_response.model_dump())}\n\n"
 
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     except Exception as e:
         logger.error(
@@ -163,10 +205,17 @@ async def get_session_messages(
         HTTPException: If there's an error retrieving the messages.
     """
     try:
+        agent = await get_agent()
         messages = await agent.get_chat_history(session.id)
         return ChatResponse(messages=messages)
+
     except Exception as e:
-        logger.error("get_messages_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error(
+            "get_messages_failed",
+            session_id=session.id,
+            error=str(e),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -186,8 +235,15 @@ async def clear_chat_history(
         dict: A message indicating the chat history was cleared.
     """
     try:
+        agent = await get_agent()
         await agent.clear_chat_history(session.id)
         return {"message": "Chat history cleared successfully"}
+
     except Exception as e:
-        logger.error("clear_chat_history_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error(
+            "clear_chat_history_failed",
+            session_id=session.id,
+            error=str(e),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
