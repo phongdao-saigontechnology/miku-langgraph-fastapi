@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.langgraph.state import AgentState
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.prompts import SYSTEM_PROMPT
+from app.core.prompts import load_system_prompt
 from app.utils import dump_messages, prepare_messages
 
 
@@ -50,7 +50,9 @@ class AgentNodes:
         Returns:
             dict: Updated state with new messages
         """
-        messages = prepare_messages(state.messages, self.llm, SYSTEM_PROMPT)
+        # Load system prompt fresh each time to get current date/time
+        system_prompt = load_system_prompt()
+        messages = prepare_messages(state.messages, self.llm, system_prompt)
         max_retries = settings.MAX_LLM_CALL_RETRIES
 
         for attempt in range(max_retries):
